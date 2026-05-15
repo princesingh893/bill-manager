@@ -25,6 +25,11 @@
   </div>
 </div>
 
+<div id="setupBanner" class="setupBanner hidden">
+  <strong>Phone par folders nahi dikh rahe?</strong>
+  <p>Cloud sync abhi band hai. Firebase setup karo, ya neeche backup se data lao.</p>
+</div>
+
 <main class="container">
   <div class="createBox">
     <input id="folderName" class="searchInput" type="text"
@@ -34,6 +39,16 @@
 
   <div id="folderList" class="folderList"></div>
   <p id="emptyHint" class="emptyHint hidden">No folders yet. Enter a name above to create one.</p>
+
+  <section class="backupBox">
+    <h2 class="backupTitle">📲 Laptop → Phone (backup)</h2>
+    <p class="backupHint">Laptop: Export → WhatsApp se phone par bhejo → Phone: Import</p>
+    <div class="backupActions">
+      <button type="button" class="btn btnPrimary" onclick="exportBackup()">Export backup</button>
+      <button type="button" class="btn btnGhost" onclick="document.getElementById('importFile').click()">Import backup</button>
+      <input type="file" id="importFile" class="hidden" accept=".json,application/json" onchange="importBackup(event)">
+    </div>
+  </section>
 </main>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>

@@ -300,6 +300,78 @@ window.goBack = function () {
   window.location.href = "index.html";
 };
 
+function updateSetupBanner() {
+  const banner = document.getElementById("setupBanner");
+  if (!banner) return;
+  if (window.BillSync && BillSync.isConfigured()) {
+    banner.classList.add("hidden");
+  } else {
+    banner.classList.remove("hidden");
+  }
+}
+
+window.exportBackup = function () {
+  const payload = {
+    folders: folders,
+    updatedAt: getLocalUpdatedAt() || Date.now()
+  };
+  const blob = new Blob([JSON.stringify(payload)], {
+    type: "application/json"
+  });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download =
+    "bill-manager-backup-" + new Date().toISOString().slice(0, 10) + ".json";
+  a.click();
+  setTimeout(function () {
+    URL.revokeObjectURL(a.href);
+  }, 2000);
+  alert("Backup downloaded. Send this file to your phone, then tap Import backup.");
+};
+
+window.importBackup = function (event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function () {
+    try {
+      const data = JSON.parse(reader.result);
+      if (!data || !Array.isArray(data.folders)) {
+        alert("Invalid backup file.");
+        return;
+      }
+      if (
+        !confirm(
+          "Replace all folders and bills on this device with this backup?"
+        )
+      ) {
+        event.target.value = "";
+        return;
+      }
+      applyFoldersFromCloud({
+        folders: data.folders,
+        updatedAt: data.updatedAt || Date.now()
+      });
+      if (window.BillSync && BillSync.isConfigured()) {
+        BillSync.syncNow();
+      }
+      alert("Import successful!");
+      if (document.getElementById("folderList")) {
+        const search = document.getElementById("search");
+        const text = search ? search.value.toLowerCase().trim() : "";
+        const filtered = text
+          ? folders.filter((f) => f.name.toLowerCase().includes(text))
+          : folders;
+        window.dispatchEvent(new CustomEvent("foldersUpdated"));
+      }
+    } catch (e) {
+      alert("Could not read backup file.");
+    }
+    event.target.value = "";
+  };
+  reader.readAsText(file);
+};
+
 /////////////////////////////////////////////////
 // HOME PAGE
 /////////////////////////////////////////////////
@@ -705,6 +777,7 @@ async function bootstrapApp() {
 
   initHomePage();
   initFolderPage();
+  updateSetupBanner();
   window.dispatchEvent(new Event("foldersReady"));
 }
 
