@@ -5,7 +5,7 @@
   let db = null;
   let pushTimer = null;
   let ignoreRemote = false;
-  let statusText = "Local only";
+  let statusText = "Loading…";
   let onDataCallback = null;
   let getLocalCallback = null;
 
@@ -18,18 +18,13 @@
     return id;
   }
 
-  function setSyncId(id) {
-    const trimmed = (id || "").trim();
-    if (!trimmed) return false;
-    localStorage.setItem(SYNC_ID_KEY, trimmed);
-    return true;
-  }
-
   function isConfigured() {
+    const c = window.FIREBASE_CONFIG || {};
     return (
       window.FIREBASE_ENABLED === true &&
-      window.FIREBASE_CONFIG &&
-      window.FIREBASE_CONFIG.databaseURL
+      c.databaseURL &&
+      c.apiKey &&
+      c.apiKey !== "PASTE_YOUR_API_KEY"
     );
   }
 
@@ -53,7 +48,7 @@
       return true;
     } catch (e) {
       console.error(e);
-      setStatus("Cloud sync error — check firebase-config.js");
+      setStatus("Cloud error — check firebase-config.js");
       return false;
     }
   }
@@ -79,7 +74,7 @@
       await db.ref(cloudPath()).set(payload);
     } catch (e) {
       console.error(e);
-      setStatus("Sync failed — file may be too large or offline");
+      setStatus("Save failed — bill image may be too large");
       throw e;
     } finally {
       setTimeout(function () {
@@ -98,49 +93,27 @@
           folders: local.folders,
           updatedAt: local.updatedAt || Date.now()
         });
-        setStatus("☁️ Synced across devices");
+        setStatus("☁️ All devices — same data on this URL");
       } catch (e) {
-        /* status set in pushPayload */
+        /* set in pushPayload */
       }
-    }, 800);
+    }, 600);
   }
 
-  async function syncNow() {
-    if (!db) {
-      setStatus("⚠️ Local only — enable Firebase to sync");
-      return;
+  function mergeOnLoad(local, cloud) {
+    const localHas =
+      local.folders && local.folders.length > 0;
+    const cloudHas = cloud.folders && cloud.folders.length > 0;
+    const localTime = local.updatedAt || 0;
+    const cloudTime = cloud.updatedAt || 0;
+
+    if (cloudHas && (!localHas || cloudTime >= localTime)) {
+      return { action: "useCloud", cloud: cloud };
     }
-    setStatus("Syncing…");
-    try {
-      const local = getLocalCallback();
-      const cloud = await pullOnce();
-
-      if (!cloud) {
-        if (local.folders && local.folders.length) {
-          await pushPayload({
-            folders: local.folders,
-            updatedAt: Date.now()
-          });
-        }
-        setStatus("☁️ Synced across devices");
-        return;
-      }
-
-      const localTime = local.updatedAt || 0;
-      const cloudTime = cloud.updatedAt || 0;
-
-      if (cloudTime >= localTime) {
-        if (onDataCallback) onDataCallback(cloud);
-      } else {
-        await pushPayload({
-          folders: local.folders,
-          updatedAt: Date.now()
-        });
-      }
-      setStatus("☁️ Synced across devices");
-    } catch (e) {
-      setStatus("Sync failed — check internet & Firebase setup");
+    if (localHas) {
+      return { action: "pushLocal", local: local };
     }
+    return { action: "none" };
   }
 
   function startListener() {
@@ -148,11 +121,11 @@
     db.ref(cloudPath()).on("value", function (snap) {
       if (ignoreRemote || !onDataCallback) return;
       const cloud = normalizePayload(snap.val());
-      if (!cloud) return;
+      if (!cloud || !cloud.folders.length) return;
       const local = getLocalCallback();
       if (cloud.updatedAt >= (local.updatedAt || 0)) {
         onDataCallback(cloud);
-        setStatus("☁️ Synced across devices");
+        setStatus("☁️ All devices — same data on this URL");
       }
     });
   }
@@ -162,16 +135,13 @@
     getLocalCallback = options.getLocal;
 
     if (!isConfigured()) {
-      setStatus("⚠️ Local only — enable Firebase to sync");
+      setStatus("⚠️ Cloud off — add Firebase keys in firebase-config.js");
       return;
     }
 
-    if (!initDb()) {
-      setStatus("⚠️ Local only — check firebase-config.js");
-      return;
-    }
+    if (!initDb()) return;
 
-    setStatus("Connecting to cloud…");
+    setStatus("Loading bills from cloud…");
 
     try {
       const local = getLocalCallback();
@@ -185,33 +155,29 @@
           });
         }
       } else {
-        const localTime = local.updatedAt || 0;
-        const cloudTime = cloud.updatedAt || 0;
-        if (cloudTime >= localTime) {
-          onDataCallback(cloud);
-        } else {
+        const merged = mergeOnLoad(local, cloud);
+        if (merged.action === "useCloud") {
+          onDataCallback(merged.cloud);
+        } else if (merged.action === "pushLocal") {
           await pushPayload({
-            folders: local.folders,
+            folders: merged.local.folders,
             updatedAt: Date.now()
           });
         }
       }
 
       startListener();
-      setStatus("☁️ Synced across devices");
+      setStatus("☁️ All devices — same data on this URL");
     } catch (e) {
       console.error(e);
-      setStatus("⚠️ Sync failed — tap Sync to retry");
+      setStatus("⚠️ Could not load cloud — check internet");
     }
   }
 
   window.BillSync = {
     init: init,
-    syncNow: syncNow,
     schedulePush: schedulePush,
     isConfigured: isConfigured,
-    getSyncId: getSyncId,
-    setSyncId: setSyncId,
     getStatus: function () {
       return statusText;
     }

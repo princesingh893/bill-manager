@@ -5,11 +5,11 @@
 window.FIREBASE_ENABLED = false;
 
 window.FIREBASE_CONFIG = {
-  apiKey: "PASTE_YOUR_API_KEY",
+  apiKey: "AIzaSyBveOQ_y8EoaP_GpdZ06DRUyRCEUArLsNo",
   authDomain: "bill-80cdc.firebaseapp.com",
   databaseURL: "https://bill-80cdc-default-rtdb.firebaseio.com",
   projectId: "bill-80cdc",
   storageBucket: "bill-80cdc.firebasestorage.app",
-  messagingSenderId: "PASTE_SENDER_ID",
-  appId: "PASTE_APP_ID"
+  messagingSenderId: "94116797226",
+  appId: "1:94116797226:web:dc1b4c0b151a7bba415c53"
 };
