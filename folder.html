@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Party Bills</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="container">
+  <h2 id="folderTitle"></h2>
+
+  <input type="file" id="fileInput">
+  <button class="btn" onclick="uploadFile()">Upload Bill</button>
+
+  <h3>📅 Bill Calendar</h3>
+  <div id="calendar" class="calendar"></div>
+
+  <h3>📄 All Bills</h3>
+  <div id="fileList"></div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
