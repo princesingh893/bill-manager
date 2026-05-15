@@ -1,24 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Bill Manager</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#2563eb">
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
+<body class="page-home">
 
-<!-- 🔍 SEARCH BAR -->
+<header class="topBar">
+  <h1 class="topBarTitle">Bill Manager</h1>
+  <p class="topBarSub">सभी पार्टी / फोल्डर</p>
+</header>
+
 <div class="searchBar">
-  <input id="search" class="searchInput"
-         placeholder="🔍 Search party...">
+  <input id="search" class="searchInput" type="search"
+         placeholder="🔍 Search party..." autocomplete="off">
 </div>
 
 <div class="container">
-  <input id="folderName" class="searchInput"
-         placeholder="Enter Party Name">
-  <button class="btn" onclick="createFolder()">+ Create Folder</button>
+  <div class="createBox">
+    <input id="folderName" class="searchInput" type="text"
+           placeholder="Enter New Party Name" autocomplete="off">
+    <button type="button" class="btn btnPrimary" onclick="createFolder()">+ Create Folder</button>
+  </div>
 
-  <div id="folderList"></div>
+  <div id="folderList" class="folderList"></div>
+  <p id="emptyHint" class="emptyHint hidden">No folders yet. Enter a name above to create one.</p>
 </div>
 
 <script src="app.js"></script>

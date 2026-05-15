@@ -1,68 +1,583 @@
-body{
-  margin:0;
-  font-family:sans-serif;
-  background:#f4f6fb;
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
-.container{ padding:16px; }
-
-.searchBar{
-  position:sticky;
-  top:0;
-  background:white;
-  padding:12px;
-  box-shadow:0 2px 8px rgba(0,0,0,0.1);
+html {
+  -webkit-text-size-adjust: 100%;
 }
 
-.searchInput{
-  width:100%;
-  padding:14px;
-  border-radius:12px;
-  border:none;
-  background:#eef1f6;
-  font-size:16px;
-  margin-top:10px;
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background: #f0f4fa;
+  color: #1e293b;
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+  min-height: 100dvh;
 }
 
-.btn{
-  width:100%;
-  padding:14px;
-  background:#2563eb;
-  color:white;
-  border:none;
-  border-radius:12px;
-  font-size:16px;
-  margin-top:10px;
+.hidden {
+  display: none !important;
 }
 
-.card{
-  background:white;
-  padding:16px;
-  border-radius:14px;
-  margin-top:12px;
-  box-shadow:0 3px 10px rgba(0,0,0,0.08);
+/* Top bar */
+.topBar {
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
+  color: #fff;
+  padding: max(12px, env(safe-area-inset-top)) 16px 16px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
 }
 
-.fileRow{
-  display:flex;
-  justify-content:space-between;
-  margin-top:10px;
+.topBarWithBack {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.topBarText {
+  flex: 1;
+  min-width: 0;
+}
+
+.topBarTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.3;
+  word-break: break-word;
+}
+
+.topBarSub {
+  margin: 4px 0 0;
+  font-size: 0.85rem;
+  opacity: 0.9;
+}
+
+.backBtn {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.backBtn:active {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+/* Search */
+.searchBar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #fff;
+  padding: 12px 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+.container {
+  padding: 16px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  font-size: 16px;
+  margin: 0;
+}
+
+.searchInput:focus {
+  outline: 2px solid #2563eb;
+  border-color: #2563eb;
+  background: #fff;
+}
+
+.createBox {
+  background: #fff;
+  padding: 14px;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  margin-bottom: 16px;
+}
+
+.createBox .searchInput {
+  margin-bottom: 10px;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px 16px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btnPrimary {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btnPrimary:active {
+  background: #1d4ed8;
+}
+
+.btnGhost {
+  background: #f1f5f9;
+  color: #475569;
+  padding: 10px 12px;
+  width: auto;
+  font-size: 14px;
+}
+
+.btnDanger {
+  background: #fef2f2;
+  color: #dc2626;
+  padding: 10px 12px;
+  width: auto;
+  font-size: 14px;
+}
+
+/* Folder cards */
+.folderList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  overflow: hidden;
+}
+
+.cardMain {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cardMain:active {
+  background: #f8fafc;
+}
+
+.cardIcon {
+  font-size: 1.75rem;
+  flex-shrink: 0;
+}
+
+.cardInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardName {
+  font-size: 1.05rem;
+  font-weight: 600;
+  margin: 0;
+  word-break: break-word;
+}
+
+.cardMeta {
+  margin: 4px 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.cardActions {
+  display: flex;
+  gap: 8px;
+  padding: 0 12px 12px;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 10px;
+}
+
+.cardActions button {
+  flex: 1;
+}
+
+.emptyHint {
+  text-align: center;
+  color: #64748b;
+  font-size: 0.9rem;
+  margin-top: 24px;
+}
+
+/* Sections (folder page) */
+.section {
+  background: #fff;
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 14px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.sectionTitle {
+  margin: 0 0 12px;
+  font-size: 1rem;
+  font-weight: 600;
 }
 
 /* Calendar */
-.calendar{
-  display:grid;
-  grid-template-columns:repeat(7,1fr);
-  gap:6px;
-  margin-top:10px;
+.calNav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
 }
-.day{
-  background:white;
-  padding:10px;
-  border-radius:10px;
-  text-align:center;
+
+.monthLabel {
+  font-weight: 600;
+  font-size: 1rem;
 }
-.mark{
-  background:#2563eb;
-  color:white;
+
+.iconBtn {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: #334155;
+}
+
+.iconBtn:active {
+  background: #e2e8f0;
+}
+
+.calWeekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.calWeekday {
+  text-align: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: #64748b;
+  padding: 4px 0;
+}
+
+.calendar {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.day,
+.dayEmpty,
+.dayMark {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.day {
+  background: #f8fafc;
+  color: #334155;
+}
+
+.dayEmpty {
+  background: transparent;
+}
+
+.dayMark {
+  background: #2563eb;
+  color: #fff;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
+}
+
+.dayToday {
+  outline: 2px solid #93c5fd;
+}
+
+.dateLegend {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.legendDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #2563eb;
+  flex-shrink: 0;
+}
+
+/* File upload */
+.fileLabel {
+  display: block;
+  margin-bottom: 10px;
+}
+
+.fileLabel input[type="file"] {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  border-radius: 12px;
+  border: 1px dashed #cbd5e1;
+  background: #f8fafc;
+}
+
+.fileLabelText {
+  display: block;
+  font-size: 0.8rem;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+/* File list */
+.fileList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fileRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px;
+  background: #f8fafc;
+  border-radius: 12px;
+}
+
+.fileRowInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.fileRowName {
+  font-size: 0.9rem;
+  font-weight: 500;
+  word-break: break-word;
+  display: block;
+}
+
+.fileRowDate {
+  font-size: 0.75rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.fileRowBtns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.fileRowBtns button {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btnOpen {
+  background: #2563eb;
+  color: #fff;
+}
+
+.btnDelFile {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+/* Bill viewer modal */
+.billViewer {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+}
+
+.billViewer.open {
+  display: block;
+}
+
+.billViewerBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+}
+
+.billViewerPanel {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 92dvh;
+  background: #fff;
+  border-radius: 20px 20px 0 0;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.2);
+  padding-bottom: env(safe-area-inset-bottom, 12px);
+}
+
+.billViewerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e2e8f0;
+  flex-shrink: 0;
+}
+
+.billViewerTitle {
+  font-weight: 600;
+  font-size: 0.95rem;
+  word-break: break-word;
+  flex: 1;
+}
+
+.billViewerClose {
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: #f1f5f9;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.billViewerBody {
+  flex: 1;
+  overflow: auto;
+  min-height: 200px;
+  max-height: 55dvh;
+  background: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.billViewerBody img {
+  max-width: 100%;
+  max-height: 55dvh;
+  object-fit: contain;
+  display: block;
+}
+
+.billViewerBody iframe {
+  width: 100%;
+  height: 55dvh;
+  border: none;
+  background: #fff;
+}
+
+.billViewerActions {
+  display: flex;
+  gap: 10px;
+  padding: 12px 16px;
+  flex-shrink: 0;
+}
+
+.billViewerActions .btn {
+  flex: 1;
+  text-align: center;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Password modal */
+.passwordModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+}
+
+.passwordModal.open {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.passwordModalBackdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.passwordModalPanel {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  background: #fff;
+  border-radius: 16px;
+  padding: 20px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+}
+
+.passwordModalTitle {
+  margin: 0 0 6px;
+  font-size: 1.1rem;
+}
+
+.passwordModalHint {
+  margin: 0 0 14px;
+  font-size: 0.85rem;
+  color: #64748b;
+}
+
+.passwordModalActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.passwordModalActions .btn {
+  flex: 1;
+}
+
+.passwordError {
+  margin: 10px 0 0;
+  font-size: 0.85rem;
+  color: #dc2626;
+  text-align: center;
 }
