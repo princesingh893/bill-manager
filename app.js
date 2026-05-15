@@ -15,15 +15,39 @@ function loadFoldersFromStorage() {
   }
 }
 
+function getLocalUpdatedAt() {
+  return parseInt(localStorage.getItem("foldersUpdatedAt") || "0", 10);
+}
+
+function setLocalUpdatedAt(time) {
+  localStorage.setItem("foldersUpdatedAt", String(time || Date.now()));
+}
+
 function saveFolders() {
   try {
     localStorage.setItem("folders", JSON.stringify(folders));
+    setLocalUpdatedAt(Date.now());
   } catch (e) {
     alert(
       "Could not save — storage may be full. Try smaller images or delete old bills."
     );
     throw e;
   }
+  if (window.BillSync) BillSync.schedulePush();
+}
+
+function applyFoldersFromCloud(payload) {
+  if (!payload || !Array.isArray(payload.folders)) return;
+  folders = payload.folders.map(function (f, i) {
+    return {
+      id: f.id || "folder_" + i + "_" + Date.now(),
+      name: f.name || "Unnamed",
+      files: Array.isArray(f.files) ? f.files : []
+    };
+  });
+  localStorage.setItem("folders", JSON.stringify(folders));
+  if (payload.updatedAt) setLocalUpdatedAt(payload.updatedAt);
+  window.dispatchEvent(new CustomEvent("foldersUpdated"));
 }
 
 function guessMime(fileName, dataUrl) {
@@ -242,7 +266,7 @@ function requirePassword(onSuccess) {
   showPasswordModal(onSuccess);
 }
 
-let folders = loadFoldersFromStorage();
+let folders = [];
 
 function formatDate(iso) {
   if (!iso) return "";
@@ -279,7 +303,8 @@ window.goBack = function () {
 /////////////////////////////////////////////////
 // HOME PAGE
 /////////////////////////////////////////////////
-if (document.getElementById("folderList")) {
+function initHomePage() {
+  if (!document.getElementById("folderList")) return;
   const list = document.getElementById("folderList");
   const search = document.getElementById("search");
   const emptyHint = document.getElementById("emptyHint");
@@ -413,12 +438,29 @@ if (document.getElementById("folderList")) {
       : folders;
     showFolders(filtered);
   };
+
+  window.addEventListener("foldersUpdated", function () {
+    const text = search.value.toLowerCase().trim();
+    showFolders(
+      text
+        ? folders.filter((f) => f.name.toLowerCase().includes(text))
+        : folders
+    );
+  });
+
+  const syncNowBtn = document.getElementById("syncNowBtn");
+  if (syncNowBtn) {
+    syncNowBtn.onclick = function () {
+      if (window.BillSync) BillSync.syncNow();
+    };
+  }
 }
 
 /////////////////////////////////////////////////
 // FOLDER PAGE
 /////////////////////////////////////////////////
-if (document.getElementById("fileInput")) {
+function initFolderPage() {
+  if (!document.getElementById("fileInput")) return;
   const folderId =
     localStorage.getItem("currentFolderId") ||
     (() => {
@@ -434,7 +476,7 @@ if (document.getElementById("fileInput")) {
     window.location.href = "index.html";
   }
 
-  const folder = getFolderById(folderId);
+  let folder = getFolderById(folderId);
   localStorage.setItem("currentFolderId", folder.id);
 
   const fileList = document.getElementById("fileList");
@@ -623,4 +665,47 @@ if (document.getElementById("fileInput")) {
       updateSummary();
     });
   };
+
+  window.addEventListener("foldersUpdated", function () {
+    const updated = getFolderById(folderId);
+    if (!updated) {
+      window.location.href = "index.html";
+      return;
+    }
+    folder = updated;
+    title.textContent = "📁 " + folder.name;
+    updateSummary();
+    showFiles();
+    renderCalendar();
+    renderDateLegend();
+  });
+
+  const syncNowBtn = document.getElementById("syncNowBtn");
+  if (syncNowBtn) {
+    syncNowBtn.onclick = function () {
+      if (window.BillSync) BillSync.syncNow();
+    };
+  }
 }
+
+async function bootstrapApp() {
+  folders = loadFoldersFromStorage();
+  if (!localStorage.getItem("foldersUpdatedAt") && folders.length) {
+    setLocalUpdatedAt(Date.now());
+  }
+
+  if (window.BillSync) {
+    await BillSync.init({
+      onData: applyFoldersFromCloud,
+      getLocal: function () {
+        return { folders: folders, updatedAt: getLocalUpdatedAt() };
+      }
+    });
+  }
+
+  initHomePage();
+  initFolderPage();
+  window.dispatchEvent(new Event("foldersReady"));
+}
+
+bootstrapApp();

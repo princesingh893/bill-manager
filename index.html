@@ -5,6 +5,8 @@
   <title>Bill Manager</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#2563eb">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <link rel="stylesheet" href="style.css">
 </head>
 <body class="page-home">
@@ -16,20 +18,28 @@
 
 <div class="searchBar">
   <input id="search" class="searchInput" type="search"
-         placeholder="🔍 Search party..." autocomplete="off">
+         placeholder="Search party…" autocomplete="off" enterkeyhint="search">
+  <div class="syncBox" id="syncBox">
+    <p class="syncStatus" id="syncStatusText">Loading sync…</p>
+    <button type="button" class="btn btnGhost btnSync" id="syncNowBtn">Sync</button>
+  </div>
 </div>
 
-<div class="container">
+<main class="container">
   <div class="createBox">
     <input id="folderName" class="searchInput" type="text"
-           placeholder="Enter New Party Name" autocomplete="off">
-    <button type="button" class="btn btnPrimary" onclick="createFolder()">+ Create Folder</button>
+           placeholder="New party name" autocomplete="off" enterkeyhint="done">
+    <button type="button" class="btn btnPrimary" onclick="createFolder()">+ Create folder</button>
   </div>
 
   <div id="folderList" class="folderList"></div>
   <p id="emptyHint" class="emptyHint hidden">No folders yet. Enter a name above to create one.</p>
-</div>
+</main>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
+<script src="firebase-config.js"></script>
+<script src="sync.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -15,6 +15,7 @@ body {
   color: #1e293b;
   padding-bottom: env(safe-area-inset-bottom, 16px);
   min-height: 100dvh;
+  overflow-x: hidden;
 }
 
 .hidden {
@@ -78,14 +79,62 @@ body {
   top: 0;
   z-index: 10;
   background: #fff;
-  padding: 12px 16px;
+  padding: 12px max(12px, env(safe-area-inset-right)) 12px
+    max(12px, env(safe-area-inset-left));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+.syncBox {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: #f0f9ff;
+  border-radius: 12px;
+  border: 1px solid #bae6fd;
+}
+
+.syncBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: max(8px, env(safe-area-inset-top)) 12px 10px;
+  padding-left: max(12px, env(safe-area-inset-left));
+  padding-right: max(12px, env(safe-area-inset-right));
+  background: #f0f9ff;
+  border-bottom: 1px solid #bae6fd;
+}
+
+.syncStatus {
+  margin: 0;
+  font-size: clamp(0.72rem, 3.2vw, 0.8rem);
+  color: #0369a1;
+  flex: 1 1 140px;
+  min-width: 0;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.btnSync {
+  width: auto;
+  min-width: 72px;
+  min-height: 44px;
+  padding: 10px 16px;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
 .container {
-  padding: 16px;
-  max-width: 480px;
+  width: 100%;
+  max-width: 520px;
   margin: 0 auto;
+  padding: clamp(12px, 3.5vw, 16px);
+  padding-left: max(clamp(12px, 3.5vw, 16px), env(safe-area-inset-left));
+  padding-right: max(clamp(12px, 3.5vw, 16px), env(safe-area-inset-right));
 }
 
 .searchInput {
@@ -118,6 +167,7 @@ body {
 
 .btn {
   width: 100%;
+  min-height: 48px;
   padding: 14px 16px;
   border: none;
   border-radius: 12px;
@@ -125,6 +175,7 @@ body {
   font-weight: 600;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 }
 
 .btnPrimary {
@@ -212,6 +263,7 @@ body {
 
 .cardActions button {
   flex: 1;
+  min-height: 44px;
 }
 
 .emptyHint {
@@ -241,17 +293,24 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
   margin-bottom: 12px;
 }
 
 .monthLabel {
   font-weight: 600;
-  font-size: 1rem;
+  font-size: clamp(0.8rem, 3.5vw, 1rem);
+  text-align: center;
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+  padding: 0 4px;
 }
 
 .iconBtn {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
   border: none;
   border-radius: 10px;
   background: #f1f5f9;
@@ -281,19 +340,20 @@ body {
 
 .calendar {
   display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 4px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: clamp(2px, 1vw, 4px);
 }
 
 .day,
 .dayEmpty,
 .dayMark {
   aspect-ratio: 1;
+  min-height: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 10px;
-  font-size: 0.85rem;
+  border-radius: 8px;
+  font-size: clamp(0.65rem, 2.8vw, 0.85rem);
   font-weight: 500;
 }
 
@@ -370,6 +430,7 @@ body {
 
 .fileRow {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
   gap: 10px;
@@ -398,17 +459,21 @@ body {
 
 .fileRowBtns {
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
+  width: 100%;
 }
 
 .fileRowBtns button {
-  padding: 8px 12px;
+  flex: 1;
+  min-height: 44px;
+  padding: 10px 12px;
   border: none;
   border-radius: 8px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  touch-action: manipulation;
 }
 
 .btnOpen {
@@ -580,4 +645,124 @@ body {
   font-size: 0.85rem;
   color: #dc2626;
   text-align: center;
+}
+
+/* —— Phones: 320px–400px (small) —— */
+@media (max-width: 400px) {
+  .topBarTitle {
+    font-size: 1.1rem;
+  }
+
+  .topBarSub {
+    font-size: 0.8rem;
+  }
+
+  .syncBox {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .syncBox .btnSync {
+    width: 100%;
+  }
+
+  .syncBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .syncBar .btnSync {
+    width: 100%;
+  }
+
+  .cardActions {
+    flex-direction: column;
+  }
+
+  .cardActions .btn {
+    width: 100%;
+  }
+
+  .section {
+    padding: 14px;
+  }
+
+  .sectionTitle {
+    font-size: 0.95rem;
+  }
+
+  .calWeekday {
+    font-size: 0.6rem;
+    padding: 2px 0;
+  }
+
+  .day,
+  .dayEmpty,
+  .dayMark {
+    aspect-ratio: unset;
+    min-height: 34px;
+  }
+
+  .fileRowInfo {
+    flex: 1 1 100%;
+  }
+
+  .billViewerHeader {
+    padding: 12px;
+  }
+
+  .billViewerActions {
+    flex-direction: column;
+  }
+
+  .billViewerActions .btn {
+    width: 100%;
+    min-height: 48px;
+  }
+}
+
+/* —— Very small (iPhone SE, 320px) —— */
+@media (max-width: 340px) {
+  .cardIcon {
+    font-size: 1.4rem;
+  }
+
+  .cardName {
+    font-size: 0.95rem;
+  }
+
+  .cardMeta {
+    font-size: 0.72rem;
+  }
+
+  .btnGhost,
+  .btnDanger {
+    font-size: 13px;
+    padding: 10px;
+  }
+}
+
+/* —— Larger phones / small tablets —— */
+@media (min-width: 401px) {
+  .fileRow {
+    flex-wrap: nowrap;
+  }
+
+  .fileRowBtns {
+    width: auto;
+  }
+
+  .fileRowInfo {
+    flex: 1 1 auto;
+  }
+
+  .syncStatus {
+    flex: 1;
+  }
+}
+
+@media (min-width: 520px) {
+  .container {
+    padding: 20px;
+  }
 }
