@@ -2,7 +2,7 @@
 // Firebase Console → Project settings → Your apps → Web → copy config here.
 // Then set FIREBASE_ENABLED = true and run: firebase deploy --only database
 
-window.FIREBASE_ENABLED = false;
+window.FIREBASE_ENABLED = true;
 
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyBveOQ_y8EoaP_GpdZ06DRUyRCEUArLsNo",
