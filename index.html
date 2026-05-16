@@ -7,7 +7,6 @@
   <meta name="theme-color" content="#2563eb">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <!-- Force no caching to always show latest version -->
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
@@ -33,14 +32,38 @@
     <button type="button" class="btn btnPrimary" onclick="createFolder()">+ Create folder</button>
   </div>
 
+  <!-- Global Calendar Section -->
+  <section class="section" style="margin-top: 16px;">
+    <h2 class="sectionTitle">📅 Global Bill Calendar (All Parties)</h2>
+    <div class="calNav">
+      <button type="button" class="iconBtn" id="globalPrevMonth">‹</button>
+      <span id="globalMonthLabel" class="monthLabel"></span>
+      <button type="button" class="iconBtn" id="globalNextMonth">›</button>
+    </div>
+    <div class="calWeekdays" id="globalCalWeekdays"></div>
+    <div id="globalCalendar" class="calendar"></div>
+  </section>
+
   <div id="folderList" class="folderList"></div>
   <p id="emptyHint" class="emptyHint hidden">No folders yet. Enter a name above to create one.</p>
 </main>
+
+<!-- Modal for showing bills of a selected date (global) -->
+<div id="dateBillModal" class="billViewer" aria-hidden="true">
+  <div class="billViewerBackdrop" id="dateBillBackdrop"></div>
+  <div class="billViewerPanel" style="max-height: 80dvh;">
+    <div class="billViewerHeader">
+      <span id="dateBillTitle" class="billViewerTitle">Bills on </span>
+      <button type="button" id="dateBillClose" class="billViewerClose">×</button>
+    </div>
+    <div id="dateBillList" class="billViewerBody" style="flex-direction: column; overflow-y: auto; align-items: stretch; background: #fff; padding: 12px;"></div>
+  </div>
+</div>
 
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
 <script src="sync.js"></script>
-<script src="app.js?v=20260516"></script>
+<script src="app.js?v=20260516g"></script>
 </body>
 </html>

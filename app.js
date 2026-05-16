@@ -1,11 +1,21 @@
 /////////////////////////////////////////////////
 // VERSION CHECK
 /////////////////////////////////////////////////
-const APP_VERSION = "20260516f";
+const APP_VERSION = "20260516h";
 const storedVersion = localStorage.getItem("appVersion");
 if (storedVersion !== APP_VERSION) {
   localStorage.setItem("appVersion", APP_VERSION);
   window.location.reload(true);
+}
+
+/////////////////////////////////////////////////
+// GLOBAL HELPER
+/////////////////////////////////////////////////
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
 }
 
 /////////////////////////////////////////////////
@@ -42,6 +52,7 @@ function saveFolders() {
     throw e;
   }
   if (window.BillSync) BillSync.schedulePush();
+  if (typeof renderGlobalCalendar === "function") renderGlobalCalendar();
 }
 
 function applyFoldersFromCloud(payload) {
@@ -54,6 +65,7 @@ function applyFoldersFromCloud(payload) {
   localStorage.setItem("folders", JSON.stringify(folders));
   if (payload.updatedAt) setLocalUpdatedAt(payload.updatedAt);
   window.dispatchEvent(new CustomEvent("foldersUpdated"));
+  if (typeof renderGlobalCalendar === "function") renderGlobalCalendar();
 }
 
 function guessMime(fileName, dataUrl) {
@@ -263,6 +275,146 @@ function uniqueBillDates(files) {
 window.goBack = function () { window.location.href = "index.html"; };
 
 /////////////////////////////////////////////////
+// GLOBAL CALENDAR (ALL FOLDERS)
+/////////////////////////////////////////////////
+function getAllBillsByDate() {
+  const map = new Map();
+  folders.forEach(folder => {
+    (folder.files || []).forEach(file => {
+      if (file.date) {
+        if (!map.has(file.date)) map.set(file.date, []);
+        map.get(file.date).push({
+          folderName: folder.name,
+          folderId: folder.id,
+          fileName: file.name,
+          fileData: file.data,
+          mime: file.mime
+        });
+      }
+    });
+  });
+  return map;
+}
+
+let globalViewYear = new Date().getFullYear();
+let globalViewMonth = new Date().getMonth();
+
+function renderGlobalCalendar() {
+  const container = document.getElementById("globalCalendar");
+  const monthLabel = document.getElementById("globalMonthLabel");
+  if (!container) return;
+  monthLabel.textContent = formatMonthYear(globalViewYear, globalViewMonth);
+
+  const billMap = getAllBillsByDate();
+  const first = new Date(globalViewYear, globalViewMonth, 1);
+  const startDay = first.getDay();
+  const daysInMonth = new Date(globalViewYear, globalViewMonth + 1, 0).getDate();
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+
+  let html = "";
+  for (let i = 0; i < startDay; i++) html += '<div class="dayEmpty"></div>';
+  for (let d = 1; d <= daysInMonth; d++) {
+    const iso = globalViewYear + "-" + String(globalViewMonth + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+    const hasBill = billMap.has(iso);
+    const isToday = iso === todayStr;
+    let cls = hasBill ? "dayMark" : "day";
+    if (isToday) cls += " dayToday";
+    html += `<div class="${cls}" data-date="${iso}">${d}</div>`;
+  }
+  container.innerHTML = html;
+
+  container.querySelectorAll('[data-date]').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showBillsForDate(el.getAttribute('data-date'));
+    });
+  });
+}
+
+function showBillsForDate(date) {
+  const billMap = getAllBillsByDate();
+  const bills = billMap.get(date) || [];
+  const modal = document.getElementById("dateBillModal");
+  const title = document.getElementById("dateBillTitle");
+  const listDiv = document.getElementById("dateBillList");
+  if (!modal || !listDiv) return;
+
+  title.textContent = `📄 Bills on ${formatDate(date)}`;
+  listDiv.innerHTML = "";
+
+  if (bills.length === 0) {
+    listDiv.innerHTML = '<p class="emptyHint">No bills on this date.</p>';
+  } else {
+    bills.forEach(bill => {
+      const card = document.createElement("div");
+      card.className = "fileRow";
+      card.innerHTML = `
+        <div class="fileRowInfo">
+          <div><strong>${escapeHtml(bill.folderName)}</strong></div>
+          <div class="fileRowName">${escapeHtml(bill.fileName)}</div>
+        </div>
+        <div class="fileRowBtns">
+          <button class="btnOpen">Open</button>
+          <button class="btnGhost" style="background:#f1f5f9;" data-newtab>New Tab</button>
+        </div>
+      `;
+      const openBtn = card.querySelector(".btnOpen");
+      openBtn.onclick = () => openBillFile(bill.fileData, bill.fileName, bill.mime);
+      const newTabBtn = card.querySelector("[data-newtab]");
+      newTabBtn.onclick = async () => {
+        let blob;
+        try {
+          if (typeof bill.fileData === "string" && bill.fileData.startsWith("data:")) {
+            const response = await fetch(bill.fileData);
+            blob = await response.blob();
+          } else {
+            blob = await fetch(bill.fileData).then(r => r.blob());
+          }
+          const url = URL.createObjectURL(blob);
+          window.open(url, "_blank");
+          setTimeout(() => URL.revokeObjectURL(url), 1000);
+        } catch (err) {
+          console.error(err);
+          alert("Could not open in new tab");
+        }
+      };
+      listDiv.appendChild(card);
+    });
+  }
+
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function initGlobalCalendar() {
+  const prevBtn = document.getElementById("globalPrevMonth");
+  const nextBtn = document.getElementById("globalNextMonth");
+  if (prevBtn) prevBtn.onclick = () => {
+    globalViewMonth--;
+    if (globalViewMonth < 0) { globalViewMonth = 11; globalViewYear--; }
+    renderGlobalCalendar();
+  };
+  if (nextBtn) nextBtn.onclick = () => {
+    globalViewMonth++;
+    if (globalViewMonth > 11) { globalViewMonth = 0; globalViewYear++; }
+    renderGlobalCalendar();
+  };
+  const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
+  const weekdayDiv = document.getElementById("globalCalWeekdays");
+  if (weekdayDiv) weekdayDiv.innerHTML = weekdays.map(w => `<div class="calWeekday">${w}</div>`).join("");
+  renderGlobalCalendar();
+
+  const modal = document.getElementById("dateBillModal");
+  if (modal) {
+    const backdrop = document.getElementById("dateBillBackdrop");
+    const closeBtn = document.getElementById("dateBillClose");
+    if (backdrop) backdrop.onclick = () => modal.classList.remove("open");
+    if (closeBtn) closeBtn.onclick = () => modal.classList.remove("open");
+  }
+}
+
+/////////////////////////////////////////////////
 // HOME PAGE
 /////////////////////////////////////////////////
 function initHomePage() {
@@ -270,12 +422,6 @@ function initHomePage() {
   const list = document.getElementById("folderList");
   const search = document.getElementById("search");
   const emptyHint = document.getElementById("emptyHint");
-
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
 
   function showFolders(data) {
     list.innerHTML = "";
@@ -329,38 +475,31 @@ function initHomePage() {
     });
   }
 
-  // Initial display
   showFolders(folders);
 
-// Inside initHomePage, replace createFolder with:
-window.createFolder = function () {
-  console.log("[DEBUG] createFolder: requiring password");
-  requirePassword(() => {
-    console.log("[DEBUG] Password OK, creating folder");
-    if (!Array.isArray(folders)) folders = [];
-    const input = document.getElementById("folderName");
-    const name = input.value.trim();
-    if (!name) return alert("Enter a party name");
+  window.createFolder = function () {
+    requirePassword(() => {
+      if (!Array.isArray(folders)) folders = [];
+      const input = document.getElementById("folderName");
+      const name = input.value.trim();
+      if (!name) return alert("Enter a party name");
 
-    folders.push({
-      id: "folder_" + Date.now(),
-      name: name,
-      files: []
+      folders.push({
+        id: "folder_" + Date.now(),
+        name: name,
+        files: []
+      });
+      saveFolders();
+      input.value = "";
+      const filterText = search.value.trim();
+      showFolders(
+        filterText
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+          : folders
+      );
     });
-    saveFolders();
-    input.value = "";
+  };
 
-    const filterText = search.value.trim();
-    showFolders(
-      filterText
-        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
-        : folders
-    );
-  });
-};
-
-
-  // RENAME FOLDER (with password)
   window.renameFolder = function (id) {
     requirePassword(() => {
       const folder = getFolderById(id);
@@ -380,7 +519,6 @@ window.createFolder = function () {
     });
   };
 
-  // DELETE FOLDER (with password)
   window.deleteFolder = function (id) {
     requirePassword(() => {
       const folder = getFolderById(id);
@@ -396,9 +534,7 @@ window.createFolder = function () {
           : folders
       );
       const currentFolderId = localStorage.getItem("currentFolderId");
-      if (currentFolderId === id) {
-        window.location.href = "index.html";
-      }
+      if (currentFolderId === id) window.location.href = "index.html";
     });
   };
 
@@ -418,11 +554,12 @@ window.createFolder = function () {
         ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
         : folders
     );
+    renderGlobalCalendar();
   });
 }
 
 /////////////////////////////////////////////////
-// FOLDER PAGE (unchanged except minor fixes)
+// FOLDER PAGE
 /////////////////////////////////////////////////
 function initFolderPage() {
   if (!document.getElementById("fileInput")) return;
@@ -446,6 +583,8 @@ function initFolderPage() {
   const title = document.getElementById("folderTitle");
   const billSummary = document.getElementById("billSummary");
   const noFilesHint = document.getElementById("noFilesHint");
+  const dateInput = document.getElementById("billDateInput");
+  if (dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
 
   let viewYear = new Date().getFullYear();
   let viewMonth = new Date().getMonth();
@@ -492,12 +631,6 @@ function initFolderPage() {
       row.querySelector(".btnDelFile").onclick = () => deleteFile(realIndex);
       fileList.appendChild(row);
     });
-  }
-
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
   }
 
   function renderCalendar() {
@@ -561,24 +694,28 @@ function initFolderPage() {
 
   window.uploadFile = function () {
     const fileInput = document.getElementById("fileInput");
+    const dateInputEl = document.getElementById("billDateInput");
     if (!fileInput) return;
     const file = fileInput.files[0];
     if (!file) return alert("Select a file first");
+    let billDate = dateInputEl ? dateInputEl.value : "";
+    if (!billDate) billDate = new Date().toISOString().slice(0, 10);
     const reader = new FileReader();
     reader.onload = function () {
-      const today = new Date().toISOString().slice(0, 10);
       folder.files.push({
         name: file.name,
         data: reader.result,
         mime: file.type || guessMime(file.name, reader.result),
-        date: today
+        date: billDate
       });
       saveFolders();
       fileInput.value = "";
+      if (dateInputEl) dateInputEl.value = new Date().toISOString().slice(0, 10);
       showFiles();
       renderCalendar();
       renderDateLegend();
       updateSummary();
+      renderGlobalCalendar();
     };
     reader.readAsDataURL(file);
   };
@@ -592,6 +729,7 @@ function initFolderPage() {
       renderCalendar();
       renderDateLegend();
       updateSummary();
+      renderGlobalCalendar();
     });
   };
 
@@ -607,6 +745,7 @@ function initFolderPage() {
     showFiles();
     renderCalendar();
     renderDateLegend();
+    renderGlobalCalendar();
   });
 
   initBillViewer();
@@ -615,6 +754,9 @@ function initFolderPage() {
   renderDateLegend();
 }
 
+/////////////////////////////////////////////////
+// BOOTSTRAP
+/////////////////////////////////////////////////
 async function bootstrapApp() {
   folders = loadFoldersFromStorage();
   if (!localStorage.getItem("foldersUpdatedAt") && folders.length) {
@@ -628,6 +770,7 @@ async function bootstrapApp() {
   }
   initHomePage();
   initFolderPage();
+  initGlobalCalendar();
   window.dispatchEvent(new Event("foldersReady"));
 }
 
