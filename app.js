@@ -1,4 +1,14 @@
 /////////////////////////////////////////////////
+// VERSION CHECK – forces hard reload after deploy
+/////////////////////////////////////////////////
+const APP_VERSION = "20260516";
+const storedVersion = localStorage.getItem("appVersion");
+if (storedVersion !== APP_VERSION) {
+  localStorage.setItem("appVersion", APP_VERSION);
+  window.location.reload(true);
+}
+
+/////////////////////////////////////////////////
 // STORAGE
 /////////////////////////////////////////////////
 function loadFoldersFromStorage() {
@@ -28,9 +38,7 @@ function saveFolders() {
     localStorage.setItem("folders", JSON.stringify(folders));
     setLocalUpdatedAt(Date.now());
   } catch (e) {
-    alert(
-      "Could not save — storage may be full. Try smaller images or delete old bills."
-    );
+    alert("Could not save — storage may be full. Try smaller images or delete old bills.");
     throw e;
   }
   if (window.BillSync) BillSync.schedulePush();
@@ -69,17 +77,6 @@ function guessMime(fileName, dataUrl) {
   return map[ext] || "application/octet-stream";
 }
 
-function dataUrlToBlob(dataUrl, fallbackMime) {
-  const str = String(dataUrl);
-  const match = str.match(/^data:([^;]*);base64,(.+)$/s);
-  if (!match) throw new Error("Invalid file data");
-  const mime = match[1] || fallbackMime || "application/octet-stream";
-  const binary = atob(match[2]);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return new Blob([bytes], { type: mime });
-}
-
 let billViewerRevokeUrl = null;
 
 function closeBillViewer() {
@@ -113,8 +110,7 @@ function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
   title.textContent = fileName || "Bill";
   body.innerHTML = "";
 
-  const isPdf =
-    (mime || "").includes("pdf") || /\.pdf$/i.test(fileName || "");
+  const isPdf = (mime || "").includes("pdf") || /\.pdf$/i.test(fileName || "");
   const isImage = (mime || "").startsWith("image/");
 
   if (isImage) {
@@ -128,8 +124,7 @@ function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
     iframe.title = fileName || "Bill PDF";
     body.appendChild(iframe);
   } else {
-    body.innerHTML =
-      '<p class="emptyHint">Preview not available for this file type. Use Download or Open in new tab.</p>';
+    body.innerHTML = '<p class="emptyHint">Preview not available for this file type. Use Download or Open in new tab.</p>';
   }
 
   downloadLink.href = downloadUrl || viewUrl;
@@ -140,46 +135,32 @@ function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
   viewer.setAttribute("aria-hidden", "false");
 }
 
+// FIXED openBillFile – uses fetch to avoid Chrome issues
 window.openBillFile = async function (data, fileName, mimeType) {
   if (!data) {
     alert("Could not open file. Data may be missing — try uploading again.");
     return;
   }
-
   closeBillViewer();
-
-  const mime = mimeType || guessMime(fileName, data);
-  let blob;
-
   try {
-    blob = dataUrlToBlob(data, mime);
-  } catch (e1) {
-    try {
-      const res = await fetch(data);
-      blob = await res.blob();
-    } catch (e2) {
-      if (String(data).startsWith("data:")) {
-        showBillViewer(fileName, data, mime, data);
-        return;
-      }
-      alert("Could not open file. Please upload it again.");
-      return;
+    let blob;
+    if (typeof data === "string" && (data.startsWith("data:") || data.startsWith("blob:") || data.startsWith("http"))) {
+      const response = await fetch(data);
+      blob = await response.blob();
+    } else {
+      throw new Error("Unsupported file format");
     }
+    if (billViewerRevokeUrl) URL.revokeObjectURL(billViewerRevokeUrl);
+    billViewerRevokeUrl = URL.createObjectURL(blob);
+    showBillViewer(fileName, billViewerRevokeUrl, blob.type || mimeType, billViewerRevokeUrl);
+  } catch (err) {
+    console.error(err);
+    alert("Could not open file. Please upload it again.");
   }
-
-  if (billViewerRevokeUrl) URL.revokeObjectURL(billViewerRevokeUrl);
-  billViewerRevokeUrl = URL.createObjectURL(blob);
-  showBillViewer(
-    fileName,
-    billViewerRevokeUrl,
-    blob.type || mime,
-    billViewerRevokeUrl
-  );
 };
 
 const ADMIN_PASSWORD = "Princek89360";
 const AUTH_SESSION_KEY = "billManagerAuth";
-
 let passwordModalCallback = null;
 
 function isPasswordAuthorized() {
@@ -192,7 +173,6 @@ function authorizeSession() {
 
 function initPasswordModal() {
   if (document.getElementById("passwordModal")) return;
-
   const modal = document.createElement("div");
   modal.id = "passwordModal";
   modal.className = "passwordModal";
@@ -211,7 +191,6 @@ function initPasswordModal() {
     </div>
   `;
   document.body.appendChild(modal);
-
   document.getElementById("passwordModalBackdrop").onclick = hidePasswordModal;
   document.getElementById("passwordCancel").onclick = hidePasswordModal;
   document.getElementById("passwordConfirm").onclick = submitPasswordModal;
@@ -288,6 +267,7 @@ function getFolderById(id) {
   return folders.find((f) => f.id === id);
 }
 
+// FIXED: always returns an array
 function uniqueBillDates(files) {
   const set = new Set();
   (files || []).forEach((f) => {
@@ -319,7 +299,7 @@ function initHomePage() {
 
     data.forEach((f) => {
       const count = (f.files || []).length;
-      const dates = uniqueBillDates(f.files);
+      const dates = uniqueBillDates(f.files) || [];
       const lastDate = dates[0] ? formatDate(dates[0]) : "No bills yet";
 
       const card = document.createElement("div");
@@ -377,6 +357,7 @@ function initHomePage() {
   showFolders(folders);
 
   window.createFolder = function () {
+    if (!Array.isArray(folders)) folders = [];
     const input = document.getElementById("folderName");
     const name = input.value.trim();
     if (!name) return alert("Enter a party name");
@@ -388,7 +369,12 @@ function initHomePage() {
     });
     saveFolders();
     input.value = "";
-    showFolders(folders);
+    const filterText = search.value.trim();
+    showFolders(
+      filterText
+        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+        : folders
+    );
   };
 
   window.renameFolder = function (id) {
@@ -401,11 +387,10 @@ function initHomePage() {
       if (!trimmed) return alert("Name cannot be empty");
       folder.name = trimmed;
       saveFolders();
+      const filterText = search.value.trim();
       showFolders(
-        search.value.trim()
-          ? folders.filter((f) =>
-              f.name.toLowerCase().includes(search.value.toLowerCase())
-            )
+        filterText
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
           : folders
       );
     });
@@ -415,39 +400,35 @@ function initHomePage() {
     requirePassword(() => {
       const folder = getFolderById(id);
       if (!folder) return;
-      const ok = confirm(
-        'Delete "' + folder.name + '" and all its bills?\nThis cannot be undone.'
-      );
+      const ok = confirm('Delete "' + folder.name + '" and all its bills?\nThis cannot be undone.');
       if (!ok) return;
       folders = folders.filter((f) => f.id !== id);
       saveFolders();
+      const filterText = search.value.trim();
       showFolders(
-        search.value.trim()
-          ? folders.filter((f) =>
-              f.name.toLowerCase().includes(search.value.toLowerCase())
-            )
+        filterText
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
           : folders
       );
+      const currentFolderId = localStorage.getItem("currentFolderId");
+      if (currentFolderId === id) {
+        window.location.href = "index.html";
+      }
     });
   };
 
   search.oninput = () => {
     const text = search.value.toLowerCase().trim();
-    const filtered = text
-      ? folders.filter((f) => f.name.toLowerCase().includes(text))
-      : folders;
+    const filtered = text ? folders.filter((f) => f.name.toLowerCase().includes(text)) : folders;
     showFolders(filtered);
   };
 
   window.addEventListener("foldersUpdated", function () {
     const text = search.value.toLowerCase().trim();
     showFolders(
-      text
-        ? folders.filter((f) => f.name.toLowerCase().includes(text))
-        : folders
+      text ? folders.filter((f) => f.name.toLowerCase().includes(text)) : folders
     );
   });
-
 }
 
 /////////////////////////////////////////////////
@@ -455,19 +436,17 @@ function initHomePage() {
 /////////////////////////////////////////////////
 function initFolderPage() {
   if (!document.getElementById("fileInput")) return;
-  const folderId =
-    localStorage.getItem("currentFolderId") ||
+  const folderId = localStorage.getItem("currentFolderId") ||
     (() => {
       const oldIndex = localStorage.getItem("currentFolder");
-      if (oldIndex !== null && folders[oldIndex]) {
-        return folders[oldIndex].id;
-      }
+      if (oldIndex !== null && folders[oldIndex]) return folders[oldIndex].id;
       return null;
     })();
 
   if (!folderId || !getFolderById(folderId)) {
     alert("Folder not found");
     window.location.href = "index.html";
+    return;
   }
 
   let folder = getFolderById(folderId);
@@ -489,129 +468,14 @@ function initFolderPage() {
     if (dates.length === 0) {
       billSummary.textContent = "No bills yet";
     } else {
-      billSummary.textContent =
-        "Bills on " +
-        dates.length +
-        " day" +
-        (dates.length === 1 ? "" : "s") +
-        " · " +
-        dates.map(formatDate).slice(0, 3).join(", ") +
-        (dates.length > 3 ? "…" : "");
+      billSummary.textContent = "Bills on " + dates.length + " day" + (dates.length === 1 ? "" : "s") +
+        " · " + dates.map(formatDate).slice(0, 3).join(", ") + (dates.length > 3 ? "…" : "");
     }
   }
-
-  showFiles();
-  renderCalendar();
-  renderDateLegend();
-
-  document.getElementById("prevMonth").onclick = () => {
-    viewMonth--;
-    if (viewMonth < 0) {
-      viewMonth = 11;
-      viewYear--;
-    }
-    renderCalendar();
-  };
-
-  document.getElementById("nextMonth").onclick = () => {
-    viewMonth++;
-    if (viewMonth > 11) {
-      viewMonth = 0;
-      viewYear++;
-    }
-    renderCalendar();
-  };
-
-  const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
-  const calWeekdays = document.getElementById("calWeekdays");
-  calWeekdays.innerHTML = weekdays
-    .map((w) => `<div class="calWeekday">${w}</div>`)
-    .join("");
-
-  function getBillDateSet() {
-    const set = new Set();
-    (folder.files || []).forEach((f) => {
-      if (f.date) set.add(f.date);
-    });
-    return set;
-  }
-
-  function renderCalendar() {
-    const cal = document.getElementById("calendar");
-    const monthLabel = document.getElementById("monthLabel");
-    monthLabel.textContent = formatMonthYear(viewYear, viewMonth);
-
-    const billDates = getBillDateSet();
-    const first = new Date(viewYear, viewMonth, 1);
-    const startDay = first.getDay();
-    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
-    const today = new Date();
-    const todayStr = today.toISOString().slice(0, 10);
-
-    let html = "";
-    for (let i = 0; i < startDay; i++) {
-      html += '<div class="dayEmpty"></div>';
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-      const iso =
-        viewYear +
-        "-" +
-        String(viewMonth + 1).padStart(2, "0") +
-        "-" +
-        String(d).padStart(2, "0");
-      const hasBill = billDates.has(iso);
-      const isToday = iso === todayStr;
-      let cls = hasBill ? "dayMark" : "day";
-      if (isToday) cls += " dayToday";
-      html += `<div class="${cls}">${d}</div>`;
-    }
-    cal.innerHTML = html;
-  }
-
-  function renderDateLegend() {
-    const legend = document.getElementById("dateLegend");
-    const dates = uniqueBillDates(folder.files);
-    if (dates.length === 0) {
-      legend.innerHTML =
-        '<p class="emptyHint" style="margin:0">No bill dates yet. Upload a bill to mark dates on the calendar.</p>';
-      return;
-    }
-    legend.innerHTML = dates
-      .map(
-        (d) =>
-          `<div class="legendItem"><span class="legendDot"></span>${formatDate(d)}</div>`
-      )
-      .join("");
-  }
-
-  window.uploadFile = function () {
-    const file = document.getElementById("fileInput").files[0];
-    if (!file) return alert("Select a file first");
-
-    const reader = new FileReader();
-    reader.onload = function () {
-      const today = new Date().toISOString().slice(0, 10);
-      folder.files.push({
-        name: file.name,
-        data: reader.result,
-        mime: file.type || guessMime(file.name, reader.result),
-        date: today
-      });
-      saveFolders();
-      document.getElementById("fileInput").value = "";
-      showFiles();
-      renderCalendar();
-      renderDateLegend();
-      updateSummary();
-    };
-    reader.readAsDataURL(file);
-  };
 
   function showFiles() {
     fileList.innerHTML = "";
-    const files = [...(folder.files || [])].sort(
-      (a, b) => (b.date || "").localeCompare(a.date || "")
-    );
+    const files = [...(folder.files || [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
     if (files.length === 0) {
       noFilesHint.classList.remove("hidden");
@@ -633,8 +497,7 @@ function initFolderPage() {
           <button type="button" class="btnDelFile" data-idx="${realIndex}">Delete</button>
         </div>
       `;
-      row.querySelector(".btnOpen").onclick = () =>
-        openBillFile(f.data, f.name, f.mime);
+      row.querySelector(".btnOpen").onclick = () => openBillFile(f.data, f.name, f.mime);
       row.querySelector(".btnDelFile").onclick = () => deleteFile(realIndex);
       fileList.appendChild(row);
     });
@@ -646,7 +509,81 @@ function initFolderPage() {
     return div.innerHTML;
   }
 
-  initBillViewer();
+  function renderCalendar() {
+    const cal = document.getElementById("calendar");
+    const monthLabel = document.getElementById("monthLabel");
+    monthLabel.textContent = formatMonthYear(viewYear, viewMonth);
+
+    const billDates = (() => {
+      const set = new Set();
+      (folder.files || []).forEach((f) => { if (f.date) set.add(f.date); });
+      return set;
+    })();
+
+    const first = new Date(viewYear, viewMonth, 1);
+    const startDay = first.getDay();
+    const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+
+    let html = "";
+    for (let i = 0; i < startDay; i++) html += '<div class="dayEmpty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = viewYear + "-" + String(viewMonth + 1).padStart(2, "0") + "-" + String(d).padStart(2, "0");
+      const hasBill = billDates.has(iso);
+      const isToday = iso === todayStr;
+      let cls = hasBill ? "dayMark" : "day";
+      if (isToday) cls += " dayToday";
+      html += `<div class="${cls}">${d}</div>`;
+    }
+    cal.innerHTML = html;
+  }
+
+  function renderDateLegend() {
+    const legend = document.getElementById("dateLegend");
+    const dates = uniqueBillDates(folder.files);
+    if (dates.length === 0) {
+      legend.innerHTML = '<p class="emptyHint" style="margin:0">No bill dates yet. Upload a bill to mark dates on the calendar.</p>';
+      return;
+    }
+    legend.innerHTML = dates.map(d => `<div class="legendItem"><span class="legendDot"></span>${formatDate(d)}</div>`).join("");
+  }
+
+  document.getElementById("prevMonth").onclick = () => {
+    viewMonth--;
+    if (viewMonth < 0) { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  };
+  document.getElementById("nextMonth").onclick = () => {
+    viewMonth++;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    renderCalendar();
+  };
+
+  const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
+  document.getElementById("calWeekdays").innerHTML = weekdays.map(w => `<div class="calWeekday">${w}</div>`).join("");
+
+  window.uploadFile = function () {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return alert("Select a file first");
+    const reader = new FileReader();
+    reader.onload = function () {
+      const today = new Date().toISOString().slice(0, 10);
+      folder.files.push({
+        name: file.name,
+        data: reader.result,
+        mime: file.type || guessMime(file.name, reader.result),
+        date: today
+      });
+      saveFolders();
+      document.getElementById("fileInput").value = "";
+      showFiles();
+      renderCalendar();
+      renderDateLegend();
+      updateSummary();
+    };
+    reader.readAsDataURL(file);
+  };
 
   window.deleteFile = function (index) {
     requirePassword(() => {
@@ -674,6 +611,10 @@ function initFolderPage() {
     renderDateLegend();
   });
 
+  initBillViewer();
+  showFiles();
+  renderCalendar();
+  renderDateLegend();
 }
 
 async function bootstrapApp() {
@@ -681,16 +622,12 @@ async function bootstrapApp() {
   if (!localStorage.getItem("foldersUpdatedAt") && folders.length) {
     setLocalUpdatedAt(Date.now());
   }
-
   if (window.BillSync) {
     await BillSync.init({
       onData: applyFoldersFromCloud,
-      getLocal: function () {
-        return { folders: folders, updatedAt: getLocalUpdatedAt() };
-      }
+      getLocal: () => ({ folders: folders, updatedAt: getLocalUpdatedAt() })
     });
   }
-
   initHomePage();
   initFolderPage();
   window.dispatchEvent(new Event("foldersReady"));
