@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////
-// VERSION CHECK – forces hard reload after deploy
+// VERSION CHECK
 /////////////////////////////////////////////////
-const APP_VERSION = "20260516";
+const APP_VERSION = "20260516f";
 const storedVersion = localStorage.getItem("appVersion");
 if (storedVersion !== APP_VERSION) {
   localStorage.setItem("appVersion", APP_VERSION);
@@ -46,13 +46,11 @@ function saveFolders() {
 
 function applyFoldersFromCloud(payload) {
   if (!payload || !Array.isArray(payload.folders)) return;
-  folders = payload.folders.map(function (f, i) {
-    return {
-      id: f.id || "folder_" + i + "_" + Date.now(),
-      name: f.name || "Unnamed",
-      files: Array.isArray(f.files) ? f.files : []
-    };
-  });
+  folders = payload.folders.map((f, i) => ({
+    id: f.id || "folder_" + i + "_" + Date.now(),
+    name: f.name || "Unnamed",
+    files: Array.isArray(f.files) ? f.files : []
+  }));
   localStorage.setItem("folders", JSON.stringify(folders));
   if (payload.updatedAt) setLocalUpdatedAt(payload.updatedAt);
   window.dispatchEvent(new CustomEvent("foldersUpdated"));
@@ -78,13 +76,13 @@ function guessMime(fileName, dataUrl) {
 }
 
 let billViewerRevokeUrl = null;
-
 function closeBillViewer() {
   const viewer = document.getElementById("billViewer");
   if (!viewer) return;
   viewer.classList.remove("open");
   viewer.setAttribute("aria-hidden", "true");
-  document.getElementById("billViewerBody").innerHTML = "";
+  const body = document.getElementById("billViewerBody");
+  if (body) body.innerHTML = "";
   if (billViewerRevokeUrl) {
     URL.revokeObjectURL(billViewerRevokeUrl);
     billViewerRevokeUrl = null;
@@ -95,8 +93,10 @@ function initBillViewer() {
   const viewer = document.getElementById("billViewer");
   if (!viewer || viewer.dataset.ready) return;
   viewer.dataset.ready = "1";
-  document.getElementById("billViewerBackdrop").onclick = closeBillViewer;
-  document.getElementById("billViewerClose").onclick = closeBillViewer;
+  const backdrop = document.getElementById("billViewerBackdrop");
+  const closeBtn = document.getElementById("billViewerClose");
+  if (backdrop) backdrop.onclick = closeBillViewer;
+  if (closeBtn) closeBtn.onclick = closeBillViewer;
 }
 
 function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
@@ -106,13 +106,11 @@ function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
   const title = document.getElementById("billViewerTitle");
   const downloadLink = document.getElementById("billViewerDownload");
   const newTabLink = document.getElementById("billViewerNewTab");
-
+  if (!viewer || !body) return;
   title.textContent = fileName || "Bill";
   body.innerHTML = "";
-
   const isPdf = (mime || "").includes("pdf") || /\.pdf$/i.test(fileName || "");
   const isImage = (mime || "").startsWith("image/");
-
   if (isImage) {
     const img = document.createElement("img");
     img.src = viewUrl;
@@ -124,18 +122,17 @@ function showBillViewer(fileName, viewUrl, mime, downloadUrl) {
     iframe.title = fileName || "Bill PDF";
     body.appendChild(iframe);
   } else {
-    body.innerHTML = '<p class="emptyHint">Preview not available for this file type. Use Download or Open in new tab.</p>';
+    body.innerHTML = '<p class="emptyHint">Preview not available. Use Download or Open in new tab.</p>';
   }
-
-  downloadLink.href = downloadUrl || viewUrl;
-  downloadLink.download = fileName || "bill";
-  newTabLink.href = downloadUrl || viewUrl;
-
+  if (downloadLink) {
+    downloadLink.href = downloadUrl || viewUrl;
+    downloadLink.download = fileName || "bill";
+  }
+  if (newTabLink) newTabLink.href = downloadUrl || viewUrl;
   viewer.classList.add("open");
   viewer.setAttribute("aria-hidden", "false");
 }
 
-// FIXED openBillFile – uses fetch to avoid Chrome issues
 window.openBillFile = async function (data, fileName, mimeType) {
   if (!data) {
     alert("Could not open file. Data may be missing — try uploading again.");
@@ -163,13 +160,8 @@ const ADMIN_PASSWORD = "Princek89360";
 const AUTH_SESSION_KEY = "billManagerAuth";
 let passwordModalCallback = null;
 
-function isPasswordAuthorized() {
-  return sessionStorage.getItem(AUTH_SESSION_KEY) === "1";
-}
-
-function authorizeSession() {
-  sessionStorage.setItem(AUTH_SESSION_KEY, "1");
-}
+function isPasswordAuthorized() { return sessionStorage.getItem(AUTH_SESSION_KEY) === "1"; }
+function authorizeSession() { sessionStorage.setItem(AUTH_SESSION_KEY, "1"); }
 
 function initPasswordModal() {
   if (document.getElementById("passwordModal")) return;
@@ -181,7 +173,7 @@ function initPasswordModal() {
     <div class="passwordModalBackdrop" id="passwordModalBackdrop"></div>
     <div class="passwordModalPanel" role="dialog" aria-labelledby="passwordModalTitle">
       <h2 id="passwordModalTitle" class="passwordModalTitle">Enter password</h2>
-      <p class="passwordModalHint">Rename and delete require your password.</p>
+      <p class="passwordModalHint">Create, rename and delete require your password.</p>
       <input type="password" id="passwordInput" class="searchInput" placeholder="Password" autocomplete="off">
       <div class="passwordModalActions">
         <button type="button" class="btn btnGhost" id="passwordCancel">Cancel</button>
@@ -206,6 +198,7 @@ function showPasswordModal(onSuccess) {
   const modal = document.getElementById("passwordModal");
   const input = document.getElementById("passwordInput");
   const err = document.getElementById("passwordError");
+  if (!modal) return;
   input.value = "";
   err.classList.add("hidden");
   modal.classList.add("open");
@@ -251,11 +244,7 @@ function formatDate(iso) {
   if (!iso) return "";
   const d = new Date(iso + "T12:00:00");
   if (isNaN(d.getTime())) return iso;
-  return d.toLocaleDateString("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric"
-  });
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
 function formatMonthYear(year, month) {
@@ -263,22 +252,15 @@ function formatMonthYear(year, month) {
   return d.toLocaleDateString("en-IN", { month: "long", year: "numeric" });
 }
 
-function getFolderById(id) {
-  return folders.find((f) => f.id === id);
-}
+function getFolderById(id) { return folders.find((f) => f.id === id); }
 
-// FIXED: always returns an array
 function uniqueBillDates(files) {
   const set = new Set();
-  (files || []).forEach((f) => {
-    if (f.date) set.add(f.date);
-  });
+  (files || []).forEach((f) => { if (f.date) set.add(f.date); });
   return [...set].sort().reverse();
 }
 
-window.goBack = function () {
-  window.location.href = "index.html";
-};
+window.goBack = function () { window.location.href = "index.html"; };
 
 /////////////////////////////////////////////////
 // HOME PAGE
@@ -289,6 +271,12 @@ function initHomePage() {
   const search = document.getElementById("search");
   const emptyHint = document.getElementById("emptyHint");
 
+  function escapeHtml(text) {
+    const div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
+  }
+
   function showFolders(data) {
     list.innerHTML = "";
     if (!Array.isArray(data) || data.length === 0) {
@@ -296,15 +284,12 @@ function initHomePage() {
       return;
     }
     emptyHint.classList.add("hidden");
-
     data.forEach((f) => {
       const count = (f.files || []).length;
-      const dates = uniqueBillDates(f.files) || [];
+      const dates = uniqueBillDates(f.files);
       const lastDate = dates[0] ? formatDate(dates[0]) : "No bills yet";
-
       const card = document.createElement("div");
       card.className = "card";
-
       const main = document.createElement("div");
       main.className = "cardMain";
       main.innerHTML = `
@@ -318,10 +303,8 @@ function initHomePage() {
         localStorage.setItem("currentFolderId", f.id);
         window.location.href = "folder.html";
       };
-
       const actions = document.createElement("div");
       actions.className = "cardActions";
-
       const renameBtn = document.createElement("button");
       renameBtn.type = "button";
       renameBtn.className = "btn btnGhost";
@@ -330,7 +313,6 @@ function initHomePage() {
         e.stopPropagation();
         renameFolder(f.id);
       };
-
       const delBtn = document.createElement("button");
       delBtn.type = "button";
       delBtn.className = "btn btnDanger";
@@ -339,7 +321,6 @@ function initHomePage() {
         e.stopPropagation();
         deleteFolder(f.id);
       };
-
       actions.appendChild(renameBtn);
       actions.appendChild(delBtn);
       card.appendChild(main);
@@ -348,15 +329,14 @@ function initHomePage() {
     });
   }
 
-  function escapeHtml(text) {
-    const div = document.createElement("div");
-    div.textContent = text;
-    return div.innerHTML;
-  }
-
+  // Initial display
   showFolders(folders);
 
-  window.createFolder = function () {
+// Inside initHomePage, replace createFolder with:
+window.createFolder = function () {
+  console.log("[DEBUG] createFolder: requiring password");
+  requirePassword(() => {
+    console.log("[DEBUG] Password OK, creating folder");
     if (!Array.isArray(folders)) folders = [];
     const input = document.getElementById("folderName");
     const name = input.value.trim();
@@ -369,14 +349,18 @@ function initHomePage() {
     });
     saveFolders();
     input.value = "";
+
     const filterText = search.value.trim();
     showFolders(
       filterText
         ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
         : folders
     );
-  };
+  });
+};
 
+
+  // RENAME FOLDER (with password)
   window.renameFolder = function (id) {
     requirePassword(() => {
       const folder = getFolderById(id);
@@ -396,6 +380,7 @@ function initHomePage() {
     });
   };
 
+  // DELETE FOLDER (with password)
   window.deleteFolder = function (id) {
     requirePassword(() => {
       const folder = getFolderById(id);
@@ -418,21 +403,26 @@ function initHomePage() {
   };
 
   search.oninput = () => {
-    const text = search.value.toLowerCase().trim();
-    const filtered = text ? folders.filter((f) => f.name.toLowerCase().includes(text)) : folders;
-    showFolders(filtered);
+    const filterText = search.value.trim();
+    showFolders(
+      filterText
+        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+        : folders
+    );
   };
 
-  window.addEventListener("foldersUpdated", function () {
-    const text = search.value.toLowerCase().trim();
+  window.addEventListener("foldersUpdated", () => {
+    const filterText = search.value.trim();
     showFolders(
-      text ? folders.filter((f) => f.name.toLowerCase().includes(text)) : folders
+      filterText
+        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+        : folders
     );
   });
 }
 
 /////////////////////////////////////////////////
-// FOLDER PAGE
+// FOLDER PAGE (unchanged except minor fixes)
 /////////////////////////////////////////////////
 function initFolderPage() {
   if (!document.getElementById("fileInput")) return;
@@ -474,14 +464,15 @@ function initFolderPage() {
   }
 
   function showFiles() {
+    if (!fileList) return;
     fileList.innerHTML = "";
     const files = [...(folder.files || [])].sort((a, b) => (b.date || "").localeCompare(a.date || ""));
 
     if (files.length === 0) {
-      noFilesHint.classList.remove("hidden");
+      if (noFilesHint) noFilesHint.classList.remove("hidden");
       return;
     }
-    noFilesHint.classList.add("hidden");
+    if (noFilesHint) noFilesHint.classList.add("hidden");
 
     files.forEach((f, idx) => {
       const realIndex = folder.files.indexOf(f);
@@ -512,6 +503,7 @@ function initFolderPage() {
   function renderCalendar() {
     const cal = document.getElementById("calendar");
     const monthLabel = document.getElementById("monthLabel");
+    if (!cal || !monthLabel) return;
     monthLabel.textContent = formatMonthYear(viewYear, viewMonth);
 
     const billDates = (() => {
@@ -541,6 +533,7 @@ function initFolderPage() {
 
   function renderDateLegend() {
     const legend = document.getElementById("dateLegend");
+    if (!legend) return;
     const dates = uniqueBillDates(folder.files);
     if (dates.length === 0) {
       legend.innerHTML = '<p class="emptyHint" style="margin:0">No bill dates yet. Upload a bill to mark dates on the calendar.</p>';
@@ -549,22 +542,27 @@ function initFolderPage() {
     legend.innerHTML = dates.map(d => `<div class="legendItem"><span class="legendDot"></span>${formatDate(d)}</div>`).join("");
   }
 
-  document.getElementById("prevMonth").onclick = () => {
+  const prevBtn = document.getElementById("prevMonth");
+  const nextBtn = document.getElementById("nextMonth");
+  if (prevBtn) prevBtn.onclick = () => {
     viewMonth--;
     if (viewMonth < 0) { viewMonth = 11; viewYear--; }
     renderCalendar();
   };
-  document.getElementById("nextMonth").onclick = () => {
+  if (nextBtn) nextBtn.onclick = () => {
     viewMonth++;
     if (viewMonth > 11) { viewMonth = 0; viewYear++; }
     renderCalendar();
   };
 
   const weekdays = ["S", "M", "T", "W", "T", "F", "S"];
-  document.getElementById("calWeekdays").innerHTML = weekdays.map(w => `<div class="calWeekday">${w}</div>`).join("");
+  const calWeekdays = document.getElementById("calWeekdays");
+  if (calWeekdays) calWeekdays.innerHTML = weekdays.map(w => `<div class="calWeekday">${w}</div>`).join("");
 
   window.uploadFile = function () {
-    const file = document.getElementById("fileInput").files[0];
+    const fileInput = document.getElementById("fileInput");
+    if (!fileInput) return;
+    const file = fileInput.files[0];
     if (!file) return alert("Select a file first");
     const reader = new FileReader();
     reader.onload = function () {
@@ -576,7 +574,7 @@ function initFolderPage() {
         date: today
       });
       saveFolders();
-      document.getElementById("fileInput").value = "";
+      fileInput.value = "";
       showFiles();
       renderCalendar();
       renderDateLegend();

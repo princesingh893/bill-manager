@@ -24,7 +24,7 @@
       window.FIREBASE_ENABLED === true &&
       c.databaseURL &&
       c.apiKey &&
-      c.apiKey !== "PASTE_YOUR_API_KEY"
+      c.apiKey !== "not write your own api key here for security reasons"
     );
   }
 
@@ -72,14 +72,16 @@
     ignoreRemote = true;
     try {
       await db.ref(cloudPath()).set(payload);
+      console.log("Push successful", payload.updatedAt);
     } catch (e) {
       console.error(e);
       setStatus("Save failed — bill image may be too large");
       throw e;
     } finally {
+      // Longer delay to prevent immediate overwrite
       setTimeout(function () {
         ignoreRemote = false;
-      }, 400);
+      }, 1500);
     }
   }
 
@@ -97,17 +99,17 @@
       } catch (e) {
         /* set in pushPayload */
       }
-    }, 600);
+    }, 300); // faster push to reduce conflict window
   }
 
   function mergeOnLoad(local, cloud) {
-    const localHas =
-      local.folders && local.folders.length > 0;
+    const localHas = local.folders && local.folders.length > 0;
     const cloudHas = cloud.folders && cloud.folders.length > 0;
     const localTime = local.updatedAt || 0;
     const cloudTime = cloud.updatedAt || 0;
 
-    if (cloudHas && (!localHas || cloudTime >= localTime)) {
+    // Cloud only wins if it is strictly newer
+    if (cloudHas && (!localHas || cloudTime > localTime)) {
       return { action: "useCloud", cloud: cloud };
     }
     if (localHas) {
@@ -123,9 +125,13 @@
       const cloud = normalizePayload(snap.val());
       if (!cloud || !cloud.folders.length) return;
       const local = getLocalCallback();
-      if (cloud.updatedAt >= (local.updatedAt || 0)) {
+      // Strictly greater than – equal timestamps will NOT overwrite
+      if (cloud.updatedAt > (local.updatedAt || 0)) {
+        console.log("Applying cloud update", cloud.updatedAt, "local", local.updatedAt);
         onDataCallback(cloud);
         setStatus("☁️ All devices — same data on this URL");
+      } else {
+        console.log("Ignoring cloud (not newer)");
       }
     });
   }
