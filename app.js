@@ -1,7 +1,7 @@
 /////////////////////////////////////////////////
 // VERSION CHECK
 /////////////////////////////////////////////////
-const APP_VERSION = "20260516h";
+const APP_VERSION = "20260516i";
 const storedVersion = localStorage.getItem("appVersion");
 if (storedVersion !== APP_VERSION) {
   localStorage.setItem("appVersion", APP_VERSION);
@@ -34,6 +34,7 @@ function loadFoldersFromStorage() {
     return [];
   }
 }
+
 
 function getLocalUpdatedAt() {
   return parseInt(localStorage.getItem("foldersUpdatedAt") || "0", 10);
@@ -168,6 +169,26 @@ window.openBillFile = async function (data, fileName, mimeType) {
   }
 };
 
+// Helper to open bill in new tab directly (without modal)
+window.openBillInNewTab = async function (data, fileName, mimeType) {
+  if (!data) return;
+  try {
+    let blob;
+    if (typeof data === "string" && (data.startsWith("data:") || data.startsWith("blob:") || data.startsWith("http"))) {
+      const response = await fetch(data);
+      blob = await response.blob();
+    } else {
+      throw new Error("Unsupported file format");
+    }
+    const url = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (err) {
+    console.error(err);
+    alert("Could not open in new tab");
+  }
+};
+
 const ADMIN_PASSWORD = "Princek89360";
 const AUTH_SESSION_KEY = "billManagerAuth";
 let passwordModalCallback = null;
@@ -185,7 +206,7 @@ function initPasswordModal() {
     <div class="passwordModalBackdrop" id="passwordModalBackdrop"></div>
     <div class="passwordModalPanel" role="dialog" aria-labelledby="passwordModalTitle">
       <h2 id="passwordModalTitle" class="passwordModalTitle">Enter password</h2>
-      <p class="passwordModalHint">Create, rename and delete require your password.</p>
+      <p class="passwordModalHint">Create, rename, delete and upload require your password.</p>
       <input type="password" id="passwordInput" class="searchInput" placeholder="Password" autocomplete="off">
       <div class="passwordModalActions">
         <button type="button" class="btn btnGhost" id="passwordCancel">Cancel</button>
@@ -340,7 +361,7 @@ function showBillsForDate(date) {
   const listDiv = document.getElementById("dateBillList");
   if (!modal || !listDiv) return;
 
-  title.textContent = `📄 Bills on ${formatDate(date)}`;
+  title.textContent = `📄 Bills on ${formatDate(date)} (${bills.length})`;
   listDiv.innerHTML = "";
 
   if (bills.length === 0) {
@@ -349,6 +370,7 @@ function showBillsForDate(date) {
     bills.forEach(bill => {
       const card = document.createElement("div");
       card.className = "fileRow";
+      card.style.cursor = "pointer";
       card.innerHTML = `
         <div class="fileRowInfo">
           <div><strong>${escapeHtml(bill.folderName)}</strong></div>
@@ -359,25 +381,22 @@ function showBillsForDate(date) {
           <button class="btnGhost" style="background:#f1f5f9;" data-newtab>New Tab</button>
         </div>
       `;
+      // Open button -> modal viewer
+      // Open button -> open in new tab (same as row click)
       const openBtn = card.querySelector(".btnOpen");
-      openBtn.onclick = () => openBillFile(bill.fileData, bill.fileName, bill.mime);
+      openBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await window.openBillInNewTab(bill.fileData, bill.fileName, bill.mime);
+      };
+      // New Tab button
       const newTabBtn = card.querySelector("[data-newtab]");
-      newTabBtn.onclick = async () => {
-        let blob;
-        try {
-          if (typeof bill.fileData === "string" && bill.fileData.startsWith("data:")) {
-            const response = await fetch(bill.fileData);
-            blob = await response.blob();
-          } else {
-            blob = await fetch(bill.fileData).then(r => r.blob());
-          }
-          const url = URL.createObjectURL(blob);
-          window.open(url, "_blank");
-          setTimeout(() => URL.revokeObjectURL(url), 1000);
-        } catch (err) {
-          console.error(err);
-          alert("Could not open in new tab");
-        }
+      newTabBtn.onclick = async (e) => {
+        e.stopPropagation();
+        await window.openBillInNewTab(bill.fileData, bill.fileName, bill.mime);
+      };
+      // Click on row -> open in new tab (same as New Tab)
+      card.onclick = async () => {
+        await window.openBillInNewTab(bill.fileData, bill.fileName, bill.mime);
       };
       listDiv.appendChild(card);
     });
@@ -494,7 +513,7 @@ function initHomePage() {
       const filterText = search.value.trim();
       showFolders(
         filterText
-          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText.toLowerCase()))
           : folders
       );
     });
@@ -513,7 +532,7 @@ function initHomePage() {
       const filterText = search.value.trim();
       showFolders(
         filterText
-          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText.toLowerCase()))
           : folders
       );
     });
@@ -530,7 +549,7 @@ function initHomePage() {
       const filterText = search.value.trim();
       showFolders(
         filterText
-          ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+          ? folders.filter((f) => f.name.toLowerCase().includes(filterText.toLowerCase()))
           : folders
       );
       const currentFolderId = localStorage.getItem("currentFolderId");
@@ -542,7 +561,7 @@ function initHomePage() {
     const filterText = search.value.trim();
     showFolders(
       filterText
-        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+        ? folders.filter((f) => f.name.toLowerCase().includes(filterText.toLowerCase()))
         : folders
     );
   };
@@ -551,7 +570,7 @@ function initHomePage() {
     const filterText = search.value.trim();
     showFolders(
       filterText
-        ? folders.filter((f) => f.name.toLowerCase().includes(filterText))
+        ? folders.filter((f) => f.name.toLowerCase().includes(filterText.toLowerCase()))
         : folders
     );
     renderGlobalCalendar();
@@ -617,6 +636,7 @@ function initFolderPage() {
       const realIndex = folder.files.indexOf(f);
       const row = document.createElement("div");
       row.className = "fileRow";
+      row.style.cursor = "pointer";
       row.innerHTML = `
         <div class="fileRowInfo">
           <span class="fileRowName">${escapeHtml(f.name)}</span>
@@ -627,8 +647,22 @@ function initFolderPage() {
           <button type="button" class="btnDelFile" data-idx="${realIndex}">Delete</button>
         </div>
       `;
-      row.querySelector(".btnOpen").onclick = () => openBillFile(f.data, f.name, f.mime);
-      row.querySelector(".btnDelFile").onclick = () => deleteFile(realIndex);
+      // Open button -> modal viewer
+      const openBtn = row.querySelector(".btnOpen");
+      openBtn.onclick = (e) => {
+        e.stopPropagation();
+        openBillFile(f.data, f.name, f.mime);
+      };
+      // Delete button
+      const delBtn = row.querySelector(".btnDelFile");
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteFile(realIndex);
+      };
+      // Click on row -> open in new tab
+      row.onclick = async () => {
+        await window.openBillInNewTab(f.data, f.name, f.mime);
+      };
       fileList.appendChild(row);
     });
   }
@@ -692,32 +726,35 @@ function initFolderPage() {
   const calWeekdays = document.getElementById("calWeekdays");
   if (calWeekdays) calWeekdays.innerHTML = weekdays.map(w => `<div class="calWeekday">${w}</div>`).join("");
 
+  // UPLOAD WITH PASSWORD
   window.uploadFile = function () {
-    const fileInput = document.getElementById("fileInput");
-    const dateInputEl = document.getElementById("billDateInput");
-    if (!fileInput) return;
-    const file = fileInput.files[0];
-    if (!file) return alert("Select a file first");
-    let billDate = dateInputEl ? dateInputEl.value : "";
-    if (!billDate) billDate = new Date().toISOString().slice(0, 10);
-    const reader = new FileReader();
-    reader.onload = function () {
-      folder.files.push({
-        name: file.name,
-        data: reader.result,
-        mime: file.type || guessMime(file.name, reader.result),
-        date: billDate
-      });
-      saveFolders();
-      fileInput.value = "";
-      if (dateInputEl) dateInputEl.value = new Date().toISOString().slice(0, 10);
-      showFiles();
-      renderCalendar();
-      renderDateLegend();
-      updateSummary();
-      renderGlobalCalendar();
-    };
-    reader.readAsDataURL(file);
+    requirePassword(() => {
+      const fileInput = document.getElementById("fileInput");
+      const dateInputEl = document.getElementById("billDateInput");
+      if (!fileInput) return;
+      const file = fileInput.files[0];
+      if (!file) return alert("Select a file first");
+      let billDate = dateInputEl ? dateInputEl.value : "";
+      if (!billDate) billDate = new Date().toISOString().slice(0, 10);
+      const reader = new FileReader();
+      reader.onload = function () {
+        folder.files.push({
+          name: file.name,
+          data: reader.result,
+          mime: file.type || guessMime(file.name, reader.result),
+          date: billDate
+        });
+        saveFolders();
+        fileInput.value = "";
+        if (dateInputEl) dateInputEl.value = new Date().toISOString().slice(0, 10);
+        showFiles();
+        renderCalendar();
+        renderDateLegend();
+        updateSummary();
+        renderGlobalCalendar();
+      };
+      reader.readAsDataURL(file);
+    });
   };
 
   window.deleteFile = function (index) {
